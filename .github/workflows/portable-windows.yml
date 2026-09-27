@@ -50,7 +50,8 @@ jobs:
         run: |
           set -euo pipefail
           ls -la dist/*.zip
-          zip=$(ls dist/*.zip | head -1)
+          zip="dist/dsh-desktop-$APP_VERSION-windows-x64-portable.zip"
+          mv "$(ls dist/*.zip | head -1)" "$zip"
           tag="portable-$APP_VERSION"
           case "$tag" in v*) echo "refusing a v* tag"; exit 1;; esac
           plugin=$(node -p "require('./node_modules/dsh-nbcad-plate/package.json').version")

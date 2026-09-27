@@ -1,0 +1,46 @@
+# Portable Windows build of DSH Desktop with the dsh-nbcad-plate plugin built in:
+# an unsigned zip of the unpacked app (run "DSH Desktop.exe" from the folder).
+name: Portable Windows (nbcad)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: App version to stamp (semver)
+        required: false
+        default: 0.10.0-nbcad.1
+        type: string
+  push:
+    branches:
+      - nbcad-portable
+
+jobs:
+  portable:
+    name: Windows x64 portable zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set app version
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "${{ inputs.version || '0.10.0-nbcad.1' }}"
+      - run: npm ci
+      - name: Confirm the plugin is part of the app
+        shell: bash
+        run: |
+          node -e "const p=require('./node_modules/dsh-nbcad-plate/package.json'); console.log('dsh-nbcad-plate', p.version)"
+          ls node_modules/dsh-nbcad-plate/bin/win32-x64
+          grep -n "dsh-nbcad-plate" build/dsh-desktop.patch.yml
+      - run: npm run build
+      - name: Build portable zip
+        run: node scripts/verify-target.mjs win32 x64 && node scripts/electron-builder-windows.mjs --win zip --x64 --publish never
+      - name: List artifacts
+        shell: bash
+        run: ls -la dist/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-desktop-windows-x64-portable-nbcad
+          path: dist/*.zip
+          if-no-files-found: error

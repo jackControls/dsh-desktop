@@ -279,7 +279,7 @@
     "dsh-desktop-market-installer": "file:packages/dsh-desktop-market-installer",
     "dsh-desktop-preset-transfer": "file:packages/dsh-desktop-preset-transfer",
     "dsh-image-generation": "file:packages/dsh-image-generation",
-    "dsh-nbcad-plate": "https://github.com/jackControls/dsh-nbcad-plate/releases/download/v0.6.9/dsh-nbcad-plate.tgz",
+    "dsh-nbcad-plate": "https://github.com/jackControls/dsh-nbcad-plate/releases/download/v0.7.0/dsh-nbcad-plate.tgz",
     "dsh-ppt": "file:packages/ppt-runtime/core",
     "dsh-ppt-composer": "file:packages/ppt-runtime/adapter",
     "electron-updater": "^6.8.9",

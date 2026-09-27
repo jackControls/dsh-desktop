@@ -1,23 +1,30 @@
 # Portable Windows build of DSH Desktop with the dsh-nbcad-plate plugin built in:
 # an unsigned zip of the unpacked app (run "DSH Desktop.exe" from the folder).
+#
+# The zip is attached as-is to a prerelease tagged portable-<version>; there is
+# no workflow artifact, so the zip is not wrapped in a second zip. The tag never
+# starts with "v", so release.yml (signed installers + publish) stays out of it.
+# Start a build with: gh workflow run portable-windows.yml --ref nbcad-portable -f version=0.10.0-nbcad.3
 name: Portable Windows (nbcad)
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: App version to stamp (semver)
+        description: App version to stamp (semver); the release tag is portable-<version>
         required: false
-        default: 0.10.0-nbcad.2
+        default: 0.10.0-nbcad.3
         type: string
-  push:
-    branches:
-      - nbcad-portable
+
+permissions:
+  contents: write
 
 jobs:
   portable:
     name: Windows x64 portable zip
     runs-on: windows-latest
+    env:
+      APP_VERSION: ${{ inputs.version || '0.10.0-nbcad.3' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,7 +32,7 @@ jobs:
           node-version: 22
       - name: Set app version
         shell: bash
-        run: npm version --no-git-tag-version --allow-same-version "${{ inputs.version || '0.10.0-nbcad.2' }}"
+        run: npm version --no-git-tag-version --allow-same-version "$APP_VERSION"
       - run: npm ci
       - name: Confirm the plugin is part of the app
         shell: bash
@@ -36,11 +43,33 @@ jobs:
       - run: npm run build
       - name: Build portable zip
         run: node scripts/verify-target.mjs win32 x64 && node scripts/electron-builder-windows.mjs --win zip --x64 --publish never
-      - name: List artifacts
+      - name: Publish the zip as prerelease portable-<version>
         shell: bash
-        run: ls -la dist/*.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dsh-desktop-windows-x64-portable-nbcad
-          path: dist/*.zip
-          if-no-files-found: error
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ls -la dist/*.zip
+          zip=$(ls dist/*.zip | head -1)
+          tag="portable-$APP_VERSION"
+          case "$tag" in v*) echo "refusing a v* tag"; exit 1;; esac
+          plugin=$(node -p "require('./node_modules/dsh-nbcad-plate/package.json').version")
+          cat > release-notes.md <<NOTES
+          Unsigned portable build of DSH Desktop $APP_VERSION with the dsh-nbcad-plate $plugin plugin built in (branch nbcad-portable, commit ${GITHUB_SHA:0:7}).
+
+          Use: unzip anywhere and run DSH Desktop.exe. The 2D -> 3D panel is in the sidebar. The plugin finds the noBS CAD engine by itself: unzip the noBS CAD Windows release and launch noBS-CAD.exe once normally (that registers the nbcad:// handler the plugin reads), or put it on the PATH; it is then started with --headless for each conversion. To pin an engine instead, add to %APPDATA%\\dsh-desktop\\harness\\profiles\\web\\cordis.patch.yml:
+
+              - id: nbcad-plate
+                config:
+                  server: C:/path/to/noBS-CAD.exe
+
+          Windows SmartScreen warns once because the build is unsigned.
+          NOTES
+          label="DSH Desktop $APP_VERSION Windows x64 portable (unsigned zip, plugin $plugin)"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$zip#$label" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$zip#$label" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+              --title "$APP_VERSION portable Windows build with dsh-nbcad-plate $plugin" --notes-file release-notes.md
+          fi
+          echo "published https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag"

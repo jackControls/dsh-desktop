@@ -38,8 +38,8 @@
 
     # noBS CAD plate workflow: 2D prints to STEP, with the 2D → 3D panel. Point
     # `server` at nbcad-mcp in the profile patch (or put nbcad-mcp on the PATH).
-    - id: nbcad-plate
-      name: dsh-nbcad-plate
+    - id: nobs-cad-step
+      name: dsh-nobs-cad-step
 
     # DSH PPT owns one direct PPTD workflow and one standard Composer client.
     # The package contains no Tencent editor runtime or SlideP route.
